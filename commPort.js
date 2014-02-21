@@ -6,10 +6,20 @@
 var com = require("serialport");
 //var net = require("net");
 
+try{
 var beltPort = new com.SerialPort("/dev/tty.NavUnit-1-SPP", {
     baudrate: 19200,
     parser: com.parsers.readline('\r\n')
   });
+}catch(err){
+	console.log(err+"\n Trying again in 2 seconds");
+	setTimeout(function(){
+		var beltPort = new com.SerialPort("/dev/tty.NavUnit-1-SPP", {
+	    baudrate: 19200,
+	    parser: com.parsers.readline('\r\n')
+  		});
+	},2000);
+}
 beltPort.on('open',function() {
   console.log('Belt Port open');
 });

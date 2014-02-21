@@ -4,6 +4,7 @@
 myLocation = null;
 myTarget = null;
 firstDraw = true;
+straightPath = null;
 
 function webSocketInit() {
 	ws0 = new WebSocket('ws:localhost:8880');
@@ -71,9 +72,11 @@ function webSocketInit() {
 			  map.panTo(myLocation);
 			  firstDraw = false;
 			  loadStreetViews();
+			  //drawPath([myLocation, myTarget]);
 		  	}else{
 		  		locationMarker.setPosition(new google.maps.LatLng(latitude,longitude));
 		  		angleMarker.setPosition(new google.maps.LatLng(latitude,longitude));
+		  		//updatePath([myLocation, myTarget]);
 
 		  	}
 	  	  }
@@ -139,4 +142,17 @@ function setTarget(coords){
 		//getBeltLocationStream();
 		//getBeltHeadingStream();
 	},6000);
+}
+function drawPath(coords){
+	straightPath = new google.maps.Polyline({
+		path: coords,
+	    geodesic: true,
+	    strokeColor: '#FF0000',
+	    strokeOpacity: 1.0,
+	    strokeWeight: 2
+	});
+	straightPath.setMap(map);
+}
+function updatePath(coords){
+	//straightPath.path = coords;
 }
