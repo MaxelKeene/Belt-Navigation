@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Accessing arguments in UI events</title>
+    <title>Nav Belt Maps</title>
     <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
     <meta charset="utf-8">
     <style>
@@ -22,9 +22,40 @@ var locationMarker;
 var angleMarker;
 var startView;
 var endView;
+var clickTarget = true;
+var directionsDisplay;
+var directionsService = new google.maps.DirectionsService();
+</script>
+</head>
 
+<body>
+    <div id="mapContent" style="height:100%">
+      <div id="systemBar" style="height:5%;background:black"></div>
+      <form name="search" action="html_form_action.asp" method="get" style="position:fixed; top:0">
+        Search: <input type="text" name="user">
+        <input type="submit" value="Search">
+      </form>
+      <!--fieldset class="gbqff gb_j" id="gbqff"><legend class="gbxx"></legend><div id="gbfwa" class="gbqfwa "><div id="gbqfqw" class="gbqfqw" guidedhelpid="search_bar"><div id="gbqfaa"></div><div id="gbqfqwb" class="gbqfqwb maps-speach-icon-padding"><input id="gbqfq" class="gbqfif" name="q" type="text" autocomplete="off" value="" x-webkit-speech="" x-webkit-grammar="builtin:maps" autocorrect="off"><div class="suggestarrow" jstcache="0" jsname="suggest_arrow.html#Suggestarrow"> <div class="triangle-box" jstcache="0"> <a href="javascript:void(0)" jsaction="sg.buttonClick;mousedown:sg.buttonPreClick;keydown:sg.buttonPreClick" id="sl-toggle" jstcache="0"> <img src="//maps.gstatic.com/mapfiles/transparent.png" class="dropdown" jstcache="0"> </a> </div> </div></div><div id="gbqfab"></div></div></div>
+      </fieldset>
+      <div class="gb_j gb_Bb" id="gbqfbw"><button class="gbqfb" aria-label="Google Search" name="" id="gbqfb"><span class="gbqfi gb_g"></span></button></div><-->
+      <div id="map-canvas" style="height:65%"></div>
+      <div id="start-streetView" style="height:30%; width: 50%; background:blue"></div>
+      <div id="end-streetView" style="height:30%; width: 50%;  top: -30%;left: 50%;position: relative;background:red"></div>
+      </div>
+    <div id="textDirections" style="height:100%;position:fixed;top:0;right:0;overflow:auto"></div>
+<script>
 function initialize() {
   webSocketInit();
+  directionsDisplay = new google.maps.DirectionsRenderer();
+  if (directions) {
+    console.log("Directions is True");
+    document.getElementById("mapContent").style.width="60%";
+    document.getElementById("textDirections").style.width="40%";
+    directionsDisplay.setPanel(document.getElementById('textDirections'));
+  }else{
+    document.getElementById("mapContent").style.width="100%";
+    document.getElementById("textDirections").style.width="0%";
+  }
   mapOptions = {
         zoom: 18,
         //center: myLocation
@@ -32,14 +63,16 @@ function initialize() {
       };
       map = new google.maps.Map(document.getElementById('map-canvas'),
           mapOptions);
+      directionsDisplay.setMap(map);
+      
 
       google.maps.event.addListener(map, 'click', function(e) {
-        targetMarker.setPosition(e.latLng);
-        endView.setPosition(e.latLng);
-        myTarget = e.latLng;
-        setTarget(e.latLng);
-        //console.log(e.latLng.lat().toString());
-      });
+          clickTarget = true;
+          myTarget = e.latLng;
+        targetMarker.setPosition(myTarget);
+        endView.setPosition(myTarget); 
+        setTarget(myTarget);
+      });    
 }
 
 function placeLocation(position, map) {
@@ -98,15 +131,35 @@ function loadStreetViews(){
   };
   startView = new  google.maps.StreetViewPanorama(document.getElementById("start-streetView"), start_panoramaOptions);
   endView = new  google.maps.StreetViewPanorama(document.getElementById("end-streetView"), end_panoramaOptions);
+
+  google.maps.event.addListener(endView, 'position_changed', function() {
+          myTarget = endView.getPosition();
+          console.log("New Street View "+myTarget);
+          if(!clickTarget) {
+            setTarget(myTarget);  //if the pano change was initiated from the pano controls resend target info.
+          }else{
+            bounds = new google.maps.LatLngBounds();
+            bounds.extend(myLocation);
+            bounds.extend(myTarget);
+            map.fitBounds(bounds);
+          }
+  });
+}
+function calcRoute() {
+  var request = {
+      origin: myLocation,
+      destination: myTarget,
+      travelMode: google.maps.TravelMode.WALKING
+  };
+  directionsService.route(request, function(response, status) {
+    if (status == google.maps.DirectionsStatus.OK) {
+      directionsDisplay.setDirections(response);
+    }
+  });
 }
 
 google.maps.event.addDomListener(window, 'load', initialize);
 
-    </script>
-  </head>
-  <body>
-    <div id="map-canvas" style="height:70%"></div>
-    <div id="start-streetView" style="height:30%; width: 50%; background:blue"></div>
-    <div id="end-streetView" style="height:30%; width: 50%;  top: -30%;left: 50%;position: relative;background:red"></div>
-  </body>
+</script>
+</body>
 </html>

@@ -1,10 +1,11 @@
 // WEBSOCKET SETUP
-//opened = false;
-//ws0 = null;
+
+var directions = false;
 myLocation = null;
 myTarget = null;
 firstDraw = true;
 straightPath = null;
+
 
 function webSocketInit() {
 	ws0 = new WebSocket('ws:localhost:8880');
@@ -25,8 +26,6 @@ function webSocketInit() {
 		var mapOptions = {
 		    zoom: 18
 		  };
-		  // var map = new google.maps.Map(document.getElementById('map-canvas'),
-		  //     mapOptions);
 		console.log(evt.data);
 		//console.log(evt);
 
@@ -46,13 +45,6 @@ function webSocketInit() {
 										anchor: new google.maps.Point(0,6),
 										rotation: angle/10
 									});
-			// startView.setPov({
-			// 			      heading: angle/10,
-			// 			      pitch: 0
-			// 			    })
-	      // setTimeout(function(){
-	      // 	ws0.send('h\r');
-	      // },1000);
 	    }
 	    if(ident[0] == "$a") {
 	      activity = ident[1];
@@ -69,24 +61,45 @@ function webSocketInit() {
 		      myLocation = new google.maps.LatLng(latitude,longitude);
 		      placeLocation(myLocation, map);
 		      placeAngle(myLocation, map);
+		      //bounds = new google.maps.LatLngBounds();
 			  map.panTo(myLocation);
 			  firstDraw = false;
 			  loadStreetViews();
-			  //drawPath([myLocation, myTarget]);
+			  drawPath([myLocation, myTarget]);
 		  	}else{
-		  		locationMarker.setPosition(new google.maps.LatLng(latitude,longitude));
-		  		angleMarker.setPosition(new google.maps.LatLng(latitude,longitude));
-		  		//updatePath([myLocation, myTarget]);
+		  		myLocation = new google.maps.LatLng(latitude,longitude);
+		  		locationMarker.setPosition(myLocation);
+		  		angleMarker.setPosition(myLocation);
+		  		updatePath([myLocation, myTarget]);
 
 		  	}
 	  	  }
 	    }
 	    if(ident[0] == "$t") {
-	    	//console.log("Target is "+ident[1]+' '+ident[2]);
-	      targetLatitude = ident[1];
-	      targetLongitude = ident[2];
-	      myTarget = new google.maps.LatLng(targetLatitude,targetLongitude);
-	   		placeTarget(myTarget, map);
+			//console.log("Target is "+ident[1]+' '+ident[2]);
+			targetLatitude = ident[1];
+			targetLongitude = ident[2];
+			myTarget = new google.maps.LatLng(targetLatitude,targetLongitude);
+			if (!targetMarker) {
+				placeTarget(myTarget, map);
+			}else{
+				targetMarker.setPosition(myTarget);
+			}
+			if(directions){
+				calcRoute();
+			}else{
+				updatePath([myLocation, myTarget]);
+				if(myTarget != null && myLocation != null){
+					console.log("Panning to new bounds");
+					bounds = new google.maps.LatLngBounds();
+					bounds.extend(myLocation);
+					bounds.extend(myTarget);
+					map.fitBounds(bounds);
+				}else{
+					console.log("Path not set");
+				}
+			}
+
 	    }
 	    if(ident[0] == "$n") {
 	      targetAngle = ident[1];
@@ -95,14 +108,21 @@ function webSocketInit() {
 	      distance = ident[1];
 	    }
 	    if(ident[0] == "$s") {
-	      //targetSet = true;
 	      console.log("TARGET SET!!!!!!!!!!!!!!!!!!!");
-	      console.log(ident[1]+" : "+ident[2]+" - "+ident[3]);
+	      //console.log(ident[1]+" : "+ident[2]+" - "+ident[3]); 
+	      console.log("Restarting Streams");
+	      clickTarget = false;
+	      getBeltTarget();
+	      getBeltLocationStream();
+		  getBeltHeadingStream();
 	    }
 
 	}
 	function onCloseMsg() {
-		console.log("Socket Closed")
+		console.log("Socket Closed");
+		if(typeof headingStream === 'defined') clearInterval(headingStream);
+		if(typeof locationStream === 'defined') clearInterval(locationStream);
+		webSocketInit();
 	}
 
 }
@@ -117,7 +137,7 @@ function getBeltHeading(){
 function getBeltHeadingStream(){
 	headingStream = setInterval(function(){
 		ws0.send('h\r');
-	},1000);
+	},3000);
 }
 function getBeltLocation(){
 	ws0.send('l\r');
@@ -125,6 +145,7 @@ function getBeltLocation(){
 function getBeltLocationStream(){
 	locationStream = setInterval(function(){
 		ws0.send('l\r');
+		if (myTarget === null) ws0.send('t\r');
 	},5000);
 }
 function getBeltTarget(){
@@ -137,22 +158,18 @@ function setTarget(coords){
 	setTimeout(function(){
 		console.log("Sending new Target");
 		ws0.send('s,'+coords.lat().toString()+','+coords.lng().toString()+',0,*');
-	},5000);
-	setTimeout(function(){
-		//getBeltLocationStream();
-		//getBeltHeadingStream();
-	},6000);
+	},200);
 }
 function drawPath(coords){
 	straightPath = new google.maps.Polyline({
 		path: coords,
 	    geodesic: true,
-	    strokeColor: '#FF0000',
+	    strokeColor: 'purple',
 	    strokeOpacity: 1.0,
 	    strokeWeight: 2
 	});
 	straightPath.setMap(map);
 }
 function updatePath(coords){
-	//straightPath.path = coords;
+	straightPath.setPath(coords);
 }
